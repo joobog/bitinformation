@@ -3,7 +3,7 @@
 import unittest
 import numpy as np
 
-from bitinfo.bitinformation import BitInformation
+from bitinformation.bitinformation import BitInformation
 
 class TestBitInformation(unittest.TestCase):
     def __init__(self, *args, **kwargs):
@@ -33,7 +33,6 @@ class TestBitInformation(unittest.TestCase):
             0,0,0,0
         ])
         self.assertTrue(np.array_equal(a, b))
-
 
     def test_permute_dim_forward(self):
         a = np.zeros((3, 4, 5, 6, 7))
