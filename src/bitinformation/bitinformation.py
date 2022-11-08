@@ -135,9 +135,9 @@ class BitInformation:
         '''Compute information content for each bit'''
         nelements = A.size
         nbits = A.itemsize * 8
-        # C = self.__bitpair_count_a_b(A, B) # very slow
-        # C = self.__bitpair_count_a_b_vectorised(A, B) # fast, high memory usage
-        C = self.__bitpair_count_a_b_partially_vectorised(A, B) # fast, 
+        # C = self.__bitpair_count_a_b(A, B)                    # very slow
+        # C = self.__bitpair_count_a_b_vectorised(A, B)         # fast, high memory usage
+        C = self.__bitpair_count_a_b_partially_vectorised(A, B) # fast, moderate memory usage
         M = np.zeros(nbits, dtype=np.float64)
         P = np.zeros((2,2))
         for i in range(0, nbits):
