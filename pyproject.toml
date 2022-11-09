@@ -4,9 +4,9 @@ build-backend = "hatchling.build"
 
 [project]
 name = "bitinformation"
-version = "0.0.3"
+version = "0.0.4"
 authors = [
-{name = "Eugen Betke", email = "eugen.betke@ecmwf.int"}, 
+    {name = "Eugen Betke", email = "eugen.betke@ecmwf.int"}, 
 ]
 description = "Bitwise information content computation"
 readme = "README.md"
@@ -16,6 +16,12 @@ classifiers = [
     "License :: OSI Approved :: GNU General Public License v3 or later (GPLv3+)",
     "Operating System :: OS Independent",
 ]
+dependencies = [
+    "scipy>=1.9.3",
+    "numpy>=1.23.1",
+    "pandas>=1.5.1",
+]
+license = "GPLv3+"
 
 [project.urls]
 "Homepage" = "https://git.ecmwf.int/users/maee/repos/bitinformation/browse"
