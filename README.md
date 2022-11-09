@@ -1,5 +1,9 @@
 # Bit-Information-Content Tool
 
+[![publish](https://github.com/joobog/bitinformation/actions/workflows/publish.yaml/badge.svg)](https://github.com/joobog/bitinformation/actions/workflows/publish.yaml)
+
+[![test](https://github.com/joobog/bitinformation/actions/workflows/ci.yaml/badge.svg)](https://github.com/joobog/bitinformation/actions/workflows/ci.yaml)
+
 ## Install
 
     python3 -m pip install bitinformation
