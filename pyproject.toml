@@ -21,7 +21,7 @@ dependencies = [
     "numpy>=1.23.1",
     "pandas>=1.5.1",
 ]
-license = "GPLv3+"
+license = "GPL-3.0-or-later"
 
 [project.urls]
 "Homepage" = "https://git.ecmwf.int/users/maee/repos/bitinformation/browse"
