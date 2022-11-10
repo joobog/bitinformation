@@ -32,7 +32,7 @@ class BitInformation:
         entropy =  1 - scipy.stats.entropy([p, 1-p], base=base)
         return entropy
 
-    def __set_zero_insignificant(self, H, nelements, confidence):
+    def __szi(self, H, nelements, confidence):
         '''Remove binary information in the vector `H` of entropies that is insignificantly
         different from a random 50/50 by setting it to zero.'''
         Hfree = self.__binom_free_entropy(nelements, confidence)
@@ -105,9 +105,8 @@ class BitInformation:
 
         df_parts = list()
         for shift in shifts:
-            mask = T(0x1) << shift
-            j = (Auint & mask) >> shift
-            k = (Buint & mask) >> shift
+            j = (Auint >> shift) & T(0x1)
+            k = (Buint >> shift) & T(0x1)
             c = np.repeat(nbits-shift-T(1), Auint.size)
             tmp = pd.DataFrame({'c':c, 'j':j, 'k':k}).groupby(['c', 'j', 'k']).aggregate(count=('c', 'count'))
             df_parts.append(tmp)
@@ -148,10 +147,10 @@ class BitInformation:
 
         # remove information that is insignificantly different from a random 50/50 experiment
         if szi:
-            self.__set_zero_insignificant(M, nelements, confidence)
+            self.__szi(M, nelements, confidence)
         return M
 
-    def bitinformation(self, A, set_zero_insignificant=True, confidence=0.99):
+    def bitinformation(self, A, szi=True, confidence=0.99):
         if type(A) is not np.ndarray:
             raise Exception(f'Expect numpy.ndarray as parameter but got {type(A)}')
 
@@ -161,55 +160,3 @@ class BitInformation:
         A2view = A_uint[1:]
         M = self.__mutual_information(A1view, A2view, confidence=confidence)
         return M
-
-    def compare_data(self, data1, data2, set_zero_insignificant=True, confidence=0.99):
-        ''' Return 0 if data are equal or 1 if they are not. '''
-        biinfo = BitInformation()
-        bi1 = biinfo.bitinformation(data1, set_zero_insignificant=set_zero_insignificant, confidence=confidence)
-        bi2 = biinfo.bitinformation(data2, set_zero_insignificant=set_zero_insignificant, confidence=confidence)
-
-        uintxx = 'uint' + str(data1.itemsize*8)
-        data1_uint = np.frombuffer(data1, uintxx)
-        data2_uint = np.frombuffer(data2, uintxx)
-
-        # create a mask for removing the least significant zeros,
-        # e.g., 1111.1111.1000.0000
-        T = data1_uint.dtype.type
-        mask = T(0x0)
-        for a, b in zip(reversed(bi1), reversed(bi2)):
-            if a == 0 and b == 0:
-                mask = T(mask * 2)
-                mask = mask | T(0x1)
-            else:
-                break
-        mask = ~mask
-
-        for a, b in zip(data1_uint, data2_uint):
-            a_masked = a & mask
-            b_masked = b & mask
-            if a_masked != b_masked:
-                return 0
-        return 1
-
-    def compare_grib_files(fn1, fn2, set_zero_insignificant=True, confidence=0.99):
-        ''' Return 0 if files are equal, otherwise return index of not
-        equal messages. '''
-        f1 = open(fn1, 'r')
-        f2 = open(fn2, 'r')
-        count = 1
-        while True:
-            h1 = codes_grib_new_from_file(f1)
-            h2 = codes_grib_new_from_file(f2)
-            if not (h1 and h2):
-                break
-            vals1 = codes_get_values(h1)
-            vals2 = codes_get_values(h2)
-            codes_release(h1)
-            codes_release(h2)
-            if compare_data(vals1, vals2, set_zero_insignificant=set_zero_insignificant, confidence=confidence) != 0:
-                return count
-            count += 1
-        f1.close()
-        f2.close()
-        return 0
-
