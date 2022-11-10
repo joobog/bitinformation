@@ -153,8 +153,8 @@ class BitInformation:
         # C = self.__bitpair_count_a_b(A, B)                    # very slow
         # C = self.__bitpair_count_a_b_vectorised(A, B)         # fast, high memory usage
         start = timer()
-        C = self.__bitpair_count_a_b(A) # fast, moderate memory usage
-        # C = self.__bitpair_count_a_b_fast(A) # fast, moderate memory usage
+        # C = self.__bitpair_count_a_b(A) # fast, moderate memory usage
+        C = self.__bitpair_count_a_b_fast(A) # fast, moderate memory usage
         stop = timer()
         print('Critical section runtime: ', stop - start)
         M = np.zeros(nbits, dtype=np.float64)
