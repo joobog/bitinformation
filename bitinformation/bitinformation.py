@@ -5,10 +5,8 @@ import pandas as pd
 import numpy as np
 import sys
 import scipy.stats
+from timeit import default_timer as timer
 
-import struct
-def binary(num):
-    return ''.join('{:0>8b}'.format(c) for c in struct.pack('!Q', num))
 
 class BitInformation:
     def __init__(self):
@@ -72,50 +70,68 @@ class BitInformation:
     #         self.__bitpair_count_c_a_b(C,a,b)
     #     return C
 
-    def __bitpair_count_a_b_vectorised(self, A, B):
-        T = A.dtype.type
-        assert(A.size == B.size)
-        nbits = A.itemsize * 8
-        Auint = np.ndarray(shape=(1, A.size), buffer=A, dtype=T)
-        Buint = np.ndarray(shape=(1, B.size), buffer=B, dtype=T)
+    # def __bitpair_count_a_b_vectorised(self, A, B):
+    #     T = A.dtype.type
+    #     assert(A.size == B.size)
+    #     nbits = A.itemsize * 8
+    #     Auint = np.ndarray(shape=(1, A.size), buffer=A, dtype=T)
+    #     Buint = np.ndarray(shape=(1, B.size), buffer=B, dtype=T)
 
-        shifts = np.ndarray(shape=(nbits, 1), buffer=np.arange(start=0, stop=nbits, dtype=T), dtype=T)
-        mask = T(0x1) << shifts
+    #     shifts = np.ndarray(shape=(nbits, 1), buffer=np.arange(start=0, stop=nbits, dtype=T), dtype=T)
+    #     mask = T(0x1) << shifts
 
-        j = (Auint & mask) >> shifts
-        k = (Buint & mask) >> shifts
+    #     j = (Auint & mask) >> shifts
+    #     k = (Buint & mask) >> shifts
 
-        jr = np.reshape(j, newshape=(j.size))
-        kr = np.reshape(k, newshape=(k.size))
-        c = np.repeat(np.arange(start=0, stop=nbits)[::-1], Auint.size)
+    #     jr = np.reshape(j, newshape=(j.size))
+    #     kr = np.reshape(k, newshape=(k.size))
+    #     c = np.repeat(np.arange(start=0, stop=nbits)[::-1], Auint.size)
 
-        df_tmp = pd.DataFrame({'c':c, 'j':jr, 'k':kr})
-        df = df_tmp.groupby(['c', 'j', 'k']).aggregate(count=('c', 'count'))
-        C = np.zeros((nbits,2,2), dtype=T)
-        C[df.index.get_level_values('c'), df.index.get_level_values('j'), df.index.get_level_values('k')] = df['count']
-        return C
+    #     df_tmp = pd.DataFrame({'c':c, 'j':jr, 'k':kr})
+    #     df = df_tmp.groupby(['c', 'j', 'k']).aggregate(count=('c', 'count'))
+    #     C = np.zeros((nbits,2,2), dtype=T)
+    #     C[df.index.get_level_values('c'), df.index.get_level_values('j'), df.index.get_level_values('k')] = df['count']
+    #     return C
 
-    def __bitpair_count_a_b_partially_vectorised(self, A, B):
-        T = A.dtype.type
-        assert(A.size == B.size)
-        nbits = T(A.itemsize * 8)
-        Auint = np.ndarray(shape=(A.size), buffer=A, dtype=T)
-        Buint = np.ndarray(shape=(B.size), buffer=B, dtype=T)
+    def __bitpair_count_a_b_fast(self, Auint):
+        T = Auint.dtype.type
+        nbits = T(Auint.itemsize * 8)
         shifts = np.arange(start=0, stop=nbits, dtype=T)
-
-        df_parts = list()
+        C = np.zeros((nbits,2,2), dtype=np.uint64)
         for shift in shifts:
-            j = (Auint >> shift) & T(0x1)
-            k = (Buint >> shift) & T(0x1)
-            c = np.repeat(nbits-shift-T(1), Auint.size)
-            tmp = pd.DataFrame({'c':c, 'j':j, 'k':k}).groupby(['c', 'j', 'k']).aggregate(count=('c', 'count'))
-            df_parts.append(tmp)
-
-        df = pd.concat(df_parts).groupby(['c', 'j', 'k']).aggregate(count=('count', 'sum'))
-        C = np.zeros((nbits,2,2), dtype=T)
-
-        C[df.index.get_level_values('c'), df.index.get_level_values('j'), df.index.get_level_values('k')] = df['count']
+            v = (Auint >> shift).astype(dtype=np.ubyte) & np.ubyte(0x1)
+            j = v[:-1]
+            k = v[1:]
+            idx = j << np.ubyte(1) | k
+            unique, counts = np.unique(idx, return_counts=True)
+            idx_c = nbits-shift-T(1)
+            for u, c in zip(unique, counts):
+                idx_j = u >> np.ubyte(1) & np.ubyte(0x1)
+                idx_k = u & np.ubyte(0x1)
+                # print(idx_c, idx_j, idx_k, c)
+                C[idx_c, idx_j, idx_k] = c
         return C
+
+
+    def __bitpair_count_a_b(self, Auint):
+        T = Auint.dtype.type
+        nbits = T(Auint.itemsize * 8)
+        shifts = np.ndarray(shape=(nbits, 1), buffer=np.arange(start=0, stop=nbits, dtype=T), dtype=T)
+        v = ((Auint >> shifts) & T(0x1)).astype(dtype=np.ubyte)
+        j = v[:,:-1]
+        k = v[:,1:]
+        c = np.tile(np.arange(start=0, stop=nbits, dtype=np.short)[::-1], (Auint.size-1, 1)).transpose()
+        idx = (c << np.ubyte(2)) | (j << np.ubyte(1)) | k
+        unique, counts = np.unique(idx, return_counts=True)
+        C = np.zeros((nbits,2,2), dtype=np.uint64)
+        for u, c in zip(unique, counts):
+            idx_c = u >> np.ubyte(2)
+            idx_j = (u & np.ubyte(0x2)) >> np.byte(1)
+            idx_k = u & np.ubyte(0x1)
+            # print(idx_c, idx_j, idx_k, c)
+            C[idx_c, idx_j, idx_k] = c
+        return C
+
 
     def __mutual_information2(self, p, base=2):
         nx = p[0].size
@@ -130,13 +146,17 @@ class BitInformation:
         M /= np.log(base)
         return M
 
-    def __mutual_information(self, A, B, szi=True, confidence=0.99):
+    def __mutual_information(self, A, szi=True, confidence=0.99):
         '''Compute information content for each bit'''
         nelements = A.size
         nbits = A.itemsize * 8
         # C = self.__bitpair_count_a_b(A, B)                    # very slow
         # C = self.__bitpair_count_a_b_vectorised(A, B)         # fast, high memory usage
-        C = self.__bitpair_count_a_b_partially_vectorised(A, B) # fast, moderate memory usage
+        start = timer()
+        C = self.__bitpair_count_a_b(A) # fast, moderate memory usage
+        # C = self.__bitpair_count_a_b_fast(A) # fast, moderate memory usage
+        stop = timer()
+        print('Critical section runtime: ', stop - start)
         M = np.zeros(nbits, dtype=np.float64)
         P = np.zeros((2,2))
         for i in range(0, nbits):
@@ -156,7 +176,8 @@ class BitInformation:
 
         uintxx = 'uint' + str(A.itemsize*8)
         A_uint = np.frombuffer(A, uintxx)
-        A1view = A_uint[:-1]
-        A2view = A_uint[1:]
-        M = self.__mutual_information(A1view, A2view, confidence=confidence)
+        # A1view = A_uint[:-1]
+        # A2view = A_uint[1:]
+        # M = self.__mutual_information(A1view, A2view, confidence=confidence)
+        M = self.__mutual_information(A_uint, confidence=confidence)
         return M
