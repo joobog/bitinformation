@@ -2,12 +2,18 @@
 
 from eccodes import *
 import bitinformation as bit
+import numpy as np
+import pandas as pd
 import argparse
 import sys
+import struct
+
+def binary(num):
+    return ''.join('{:0>8b}'.format(c) for c in struct.pack('!Q', num))
 
 def crop_data(data, szi=True, confidence=0.99, verbose=0):
-    bit = bit.BitInformation()
-    inf = bit.bitinformation(data, szi=szi, confidence=confidence)
+    bitinfo = bit.BitInformation()
+    inf = bitinfo.bitinformation(data, szi=szi, confidence=confidence)
 
     OT = data.dtype.type
 
@@ -36,7 +42,6 @@ def crop_data(data, szi=True, confidence=0.99, verbose=0):
 
 def compare_data(data1, szi=True, confidence=0.99, verbose=0):
     ''' Return 0 if data are equal or 1 if they are not. '''
-
     data2 = crop_data(data1, szi=szi, confidence=confidence, verbose=verbose)
     if verbose > 0:
         df = pd.DataFrame({'Value1':data1, 'Value2':data2, 'diff':(data1 - data2)}).reset_index()
@@ -56,7 +61,6 @@ def compare_grib_files(fn, szi=True, confidence=0.99, verbose=0):
         handle = codes_grib_new_from_file(f)
         if not handle:
             break
-        # values = codes_get_values(handle)[0:10]
         values = codes_get_values(handle)
         codes_release(handle)
         msg_status = compare_data(values, szi=szi, confidence=confidence, verbose=verbose)
