@@ -14,7 +14,7 @@ jobs:
           python-version: ${{ matrix.python-version }}
       - name: Install dependencies
         run:
-          python -m pip install --upgrade pip --upgrade pandas numpy pytest scipy
+          python -m pip install --upgrade pip --upgrade pandas numpy pytest scipy eccodes
       - run:
           python -m pip install --index-url https://test.pypi.org/simple/ --no-deps bitinformation
       - run:
