@@ -9,8 +9,8 @@ from timeit import default_timer as timer
 
 
 class BitInformation:
-    def __init__(self):
-        pass
+    def __init__(self, verbose=0):
+        self._verbose = verbose
 
     def __permute_dim_forward(self, A, dim):
         assert(dim <= A.ndim)
@@ -108,7 +108,8 @@ class BitInformation:
             for u, c in zip(unique, counts):
                 idx_j = u >> np.ubyte(1) & np.ubyte(0x1)
                 idx_k = u & np.ubyte(0x1)
-                # print(idx_c, idx_j, idx_k, c)
+                if self._verbose > 1:
+                    print(f'{{pos:{idx_c}, seq:{idx_j}{idx_k}, count:{c}}}')
                 C[idx_c, idx_j, idx_k] = c
         return C
 
@@ -128,7 +129,8 @@ class BitInformation:
             idx_c = u >> np.ubyte(2)
             idx_j = (u & np.ubyte(0x2)) >> np.byte(1)
             idx_k = u & np.ubyte(0x1)
-            # print(idx_c, idx_j, idx_k, c)
+            if self._verbose > 1:
+                print(f'{{pos:{idx_c}, seq:{idx_j}{idx_k}, count:{c}}}')
             C[idx_c, idx_j, idx_k] = c
         return C
 
@@ -156,7 +158,8 @@ class BitInformation:
         # C = self.__bitpair_count_a_b(A) # fast, moderate memory usage
         C = self.__bitpair_count_a_b_fast(A) # fast, moderate memory usage
         stop = timer()
-        print('Critical section runtime: ', stop - start)
+        if self._verbose > 0:
+            print(f'Calculation runtime: {stop - start} seconds')
         M = np.zeros(nbits, dtype=np.float64)
         P = np.zeros((2,2))
         for i in range(0, nbits):
