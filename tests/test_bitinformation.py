@@ -2,7 +2,6 @@
 
 import unittest
 import numpy as np
-from eccodes import *
 
 from bitinformation.bitinformation import BitInformation
 
