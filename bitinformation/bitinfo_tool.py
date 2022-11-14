@@ -7,6 +7,7 @@ import pandas as pd
 import argparse
 import sys
 import struct
+import pathlib
 
 
 class BitInfoTool:
@@ -59,7 +60,7 @@ class BitInfoTool:
 
         return np.all(data1_cropped == data2_cropped)
 
-    def __check_data(self, data):
+    def check_data(self, data):
         ''' Return 0 if data are equal or 1 if they are not. '''
         data_cropped = self.__crop_data(data)
         if self._verbose > 0:
@@ -87,7 +88,7 @@ class BitInfoTool:
                 values = codes_get_values(handle)
 
             codes_release(handle)
-            msg_status = self.__check_data(values)
+            msg_status = self.check_data(values)
 
             if msg_status != 0:
                 exit_status = 1
@@ -155,8 +156,15 @@ if __name__ == '__main__':
 
     bit = BitInfoTool(szi=not args.szi, confidence=args.confidence, verbose=verbose)
     command = args.pos[0]
-    if command == 'check':
-        exit_status = bit.check_grib_file(args.pos[1], args.number)
+    if command == 'stats':
+        ext = (pathlib.Path(args.pos[1])).suffix
+        print("Extension: ", ext)
+        if ext == ".csv":
+            data = pd.read_csv(args.pos[1], nrows=args.number)
+            print(data.head())
+            exit_status = bit.check_data(data.iloc[:,0].to_numpy())
+        else:
+            exit_status = bit.check_grib_file(args.pos[1], args.number)
     elif command == 'compare':
         exit_status = bit.compare_grib_files(args.pos[1], args.pos[2], args.number)
     else:
