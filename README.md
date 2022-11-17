@@ -1,9 +1,7 @@
-# Bit-Information-Content Tool
-
 [![publish](https://github.com/joobog/bitinformation/actions/workflows/publish.yaml/badge.svg)](https://github.com/joobog/bitinformation/actions/workflows/publish.yaml)
-
 [![test](https://github.com/joobog/bitinformation/actions/workflows/ci.yaml/badge.svg)](https://github.com/joobog/bitinformation/actions/workflows/ci.yaml)
 
+# Bit-Information-Content Tool
 
 The method calculates how much information content each bit in a number has.
 In essence, it is a statistical analysis of bit sequences.
