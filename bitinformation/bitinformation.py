@@ -8,32 +8,38 @@ import scipy.stats
 from timeit import default_timer as timer
 
 
+# def permute_dim_forward(self, A, dim):
+    # assert(dim <= A.ndim)
+    # R = np.moveaxis(A, np.arange(A.ndim), np.roll(np.arange(A.ndim), dim-1))
+    # return R
+
+def binom_confidence(n, c):
+    '''Returns the probability `p₁` of successes in the binomial distribution (p=1/2) of
+    `n` trials with confidence `c`.'''
+    p = scipy.stats.norm(loc=0, scale=1.0).interval(c)[1]/(2*math.sqrt(n)) + 0.5
+    return min(1.0, p)
+
+
+def binom_free_entropy(n, c, base=2):
+    '''Returns the free entropy `Hf` associated with `binom_confidence`.'''
+    p = binom_confidence(n, c)
+    entropy =  1 - scipy.stats.entropy([p, 1-p], base=base)
+    return entropy
+
+
 class BitInformation:
-    def __init__(self, verbose=0):
+    def __init__(self, data, verbose=0, szi=True, confidence=0.99):
+        self._data = data
         self._verbose = verbose
+        self._szi=szi
+        self._confidence=confidence
+        self._parameter_changed = True
 
-    def __permute_dim_forward(self, A, dim):
-        assert(dim <= A.ndim)
-        R = np.moveaxis(A, np.arange(A.ndim), np.roll(np.arange(A.ndim), dim-1))
-        return R
-
-    def __binom_confidence(self, n, c):
-        '''Returns the probability `p₁` of successes in the binomial distribution (p=1/2) of
-        `n` trials with confidence `c`.'''
-        p = scipy.stats.norm(loc=0, scale=1.0).interval(c)[1]/(2*math.sqrt(n)) + 0.5
-        return min(1.0, p)
-
-
-    def __binom_free_entropy(self, n, c, base=2):
-        '''Returns the free entropy `Hf` associated with `binom_confidence`.'''
-        p = self.__binom_confidence(n, c)
-        entropy =  1 - scipy.stats.entropy([p, 1-p], base=base)
-        return entropy
 
     def __szi(self, H, nelements, confidence):
         '''Remove binary information in the vector `H` of entropies that is insignificantly
         different from a random 50/50 by setting it to zero.'''
-        Hfree = self.__binom_free_entropy(nelements, confidence)
+        Hfree = binom_free_entropy(nelements, confidence)
         for i in range(0, H.size):
             H[i] = 0 if H[i] <= Hfree else H[i]
         return H
@@ -93,11 +99,85 @@ class BitInformation:
             self.__szi(M, nelements, confidence)
         return M
 
-    def bitinformation(self, A, szi=True, confidence=0.99):
-        if type(A) is not np.ndarray:
-            raise Exception(f'Expect numpy.ndarray as parameter but got {type(A)}')
 
-        uintxx = 'uint' + str(A.itemsize*8)
-        A_uint = np.frombuffer(A, uintxx)
-        M = self.__mutual_information(A_uint, confidence=confidence)
-        return M
+    def __compute_bitinformation(self):
+        if type(self._data) is not np.ndarray:
+            raise Exception(f'Expect numpy.ndarray as parameter but got {type(self._data)}')
+
+        uintxx = 'uint' + str(self._data.itemsize*8)
+        A_uint = np.frombuffer(self.data, uintxx)
+        self._bitinformation = self.__mutual_information(A_uint, szi=self._szi, confidence=self._confidence)
+
+    @property
+    def confidence(self):
+        return self._confidence
+
+    @confidence.setter
+    def confidence(confidence):
+        if self._confidence != confidence:
+            self._confidence = confidence
+            self._parameter_changed = True
+
+    @property
+    def szi():
+        return self._szi
+
+    @szi.setter
+    def szi(szi):
+        if self._szi != szi:
+            self._szi = szi
+            self._parameter_changed = True
+
+    @property
+    def verbose(self):
+        return self._verbose
+
+    @verbose.setter
+    def verbose(self, verbose):
+        self._verbose = verbose
+
+    @property
+    def data(self):
+        return self._data
+
+    @data.setter
+    def data(self, data):
+        self._data = data
+        self.__compute_bitinformation()
+
+    def bitinformation(self):
+        if self._parameter_changed:
+            self.__compute_bitinformation()
+            self._parameter_changed = False
+        return self._bitinformation
+
+    @property
+    def clean_data(self):
+        inf = self.bitinformation()
+        data = self.data()
+        OT = data.dtype.type
+        uintxx = 'uint' + str(data.itemsize*8)
+        data_uint = np.frombuffer(data, uintxx)
+        mask = self.mask()
+        if self._verbose > 0:
+            print('Used bit mask: ', bin(mask))
+        a = data_uint & mask
+        return np.frombuffer(a, OT)
+
+    @property
+    def mask(self):
+        ''' create a mask for removing the least significant zeros,
+          e.g., 1111.1111.1000.0000 '''
+        inf = self.bitinformation()
+        nbits = inf.size
+        uintxx = 'uint' + str(nbits)
+        T = np.dtype(uintxx).type
+
+        mask = T(0x0)
+        for a in reversed(inf):
+            if a == 0:
+                mask = mask << T(0x1) | T(0x1)
+            else:
+                break
+        mask = ~mask
+        return mask
