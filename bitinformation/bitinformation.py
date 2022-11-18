@@ -113,17 +113,17 @@ class BitInformation:
         return self._confidence
 
     @confidence.setter
-    def confidence(confidence):
+    def confidence(self, confidence):
         if self._confidence != confidence:
             self._confidence = confidence
             self._parameter_changed = True
 
     @property
-    def szi():
+    def szi(self):
         return self._szi
 
     @szi.setter
-    def szi(szi):
+    def szi(self, szi):
         if self._szi != szi:
             self._szi = szi
             self._parameter_changed = True
