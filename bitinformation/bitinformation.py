@@ -151,14 +151,13 @@ class BitInformation:
             self._parameter_changed = False
         return self._bitinformation
 
-    @property
-    def clean_data(self):
+    def cleaned_data(self):
         inf = self.bitinformation()
-        data = self.data()
+        data = self.data
         OT = data.dtype.type
         uintxx = 'uint' + str(data.itemsize*8)
         data_uint = np.frombuffer(data, uintxx)
-        mask = self.mask()
+        mask = self.mask
         if self._verbose > 0:
             print('Used bit mask: ', bin(mask))
         a = data_uint & mask
@@ -181,3 +180,20 @@ class BitInformation:
                 break
         mask = ~mask
         return mask
+
+    @property
+    def nbits_used(self):
+        ''' create a mask for removing the least significant zeros,
+          e.g., 1111.1111.1000.0000 '''
+        inf = self.bitinformation()
+        nbits = inf.size
+        uintxx = 'uint' + str(nbits)
+        T = np.dtype(uintxx).type
+
+        nbits_removed = 0
+        for a in reversed(inf):
+            if a == 0:
+                nbits_removed += 1
+            else:
+                break
+        return nbits - nbits_removed
