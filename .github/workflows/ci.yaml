@@ -19,4 +19,5 @@ jobs:
           python -m pip install --index-url https://test.pypi.org/simple/ --no-deps bitinformation
       - run:
           pytest tests/test_bitinformation.py
+          pytest tests/test_simple_packing.py
 
