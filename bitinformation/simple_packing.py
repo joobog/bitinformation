@@ -73,7 +73,6 @@ class SimplePacking:
         self._last = 127
 
     def __long_to_ieee(self, x):
-        print(type(x))
         s = x & self._U(0x80000000)
         c = (x & self._U(0x7f800000)) >> self._U(23)
         m = x & self._U(0x007fffff)
@@ -166,7 +165,6 @@ class SimplePacking:
 
     def __nearest_smaller_ieee_float(self, d):
         l = self.__ieee_nearest_smaller_to_long(d)
-        print(type(l))
         return self.__long_to_ieee(l)
 
 

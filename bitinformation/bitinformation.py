@@ -19,21 +19,99 @@ def binom_confidence(n, c):
     p = scipy.stats.norm(loc=0, scale=1.0).interval(c)[1]/(2*math.sqrt(n)) + 0.5
     return min(1.0, p)
 
-
 def binom_free_entropy(n, c, base=2):
     '''Returns the free entropy `Hf` associated with `binom_confidence`.'''
     p = binom_confidence(n, c)
     entropy =  1 - scipy.stats.entropy([p, 1-p], base=base)
     return entropy
 
+class Analyser:
+    @property
+    def data(self):
+        pass
 
-class BitInformation:
-    def __init__(self, data, verbose=0, szi=True, confidence=0.99):
+    @data.setter
+    def data(self, data):
+        pass
+
+    @property
+    def mask(self):
+        pass
+
+    @property
+    def nbits_used(self):
+        pass
+
+    def bitinformation(self):
+        pass
+
+    def cleaned_data(self):
+        # inf = self.bitinformation()
+        data = self.data
+        OT = data.dtype.type
+        uintxx = 'uint' + str(data.itemsize*8)
+        data_uint = np.frombuffer(data, uintxx)
+        mask = self.mask
+        if self._verbose > 0:
+            print('Used bit mask: ', bin(mask))
+        a = data_uint & mask
+        return np.frombuffer(a, OT)
+
+    def compare(self):
+        pass
+
+
+class ManualAnalyser(Analyser):
+    def __init__(self, data, mask):
+        self._data = data
+        self._mask = mask
+        self._verbose = 0
+
+    @property
+    def data(self):
+        return self._data
+
+    @data.setter
+    def data(self, data):
+        self._data = data
+
+    @property
+    def mask(self):
+        return self._mask
+
+    @property
+    def nbits_used(self):
+        return np.sum(self.bitinformation()).astype(np.int64)
+
+    def bitinformation(self):
+        U = self._data.dtype.type
+        mask = self._mask
+        nbits = self._data.itemsize * 8
+        bi = np.zeros(nbits)
+        for i in np.flip(np.arange(start=0, stop=nbits)):
+            bi[i] = mask & U(0x1)
+            mask = mask >> U(0x1)
+        return bi
+
+    def compare(self, data):
+        if self._verbose > 0:
+            df = pd.DataFrame({'Value1':data, 'Value2':cleaned_data, 'diff':(data - cleaned_data)}).reset_index()
+            df['index'] += 1
+            df = df[df['diff'] != 0.0]
+            if not df.empty:
+                print(df)
+        return np.all(self._data == data)
+
+
+
+class BitInformationAnalyser(Analyser):
+    def __init__(self, data, verbose=0, szi=True, confidence=0.99, precision=0.99):
         self._data = data
         self._verbose = verbose
         self._szi=szi
         self._confidence=confidence
         self._parameter_changed = True
+        self._precision = precision
 
 
     def __szi(self, H, nelements, confidence):
@@ -59,7 +137,7 @@ class BitInformation:
             for u, c in zip(unique, counts):
                 idx_j = u >> np.ubyte(1) & np.ubyte(0x1)
                 idx_k = u & np.ubyte(0x1)
-                if self._verbose > 1:
+                if self._verbose > 3:
                     print(f'{{pos:{idx_c}, seq:{idx_j}{idx_k}, count:{c}}}')
                 C[idx_c, idx_j, idx_k] = c
         return C
@@ -84,7 +162,7 @@ class BitInformation:
         start = timer()
         C = self.__bitpair_count_a_b_fast(A) # fast, moderate memory usage
         stop = timer()
-        if self._verbose > 0:
+        if self._verbose > 3:
             print(f'Calculation runtime: {stop - start} seconds')
         M = np.zeros(nbits, dtype=np.float64)
         P = np.zeros((2,2))
@@ -145,39 +223,32 @@ class BitInformation:
         self._data = data
         self.__compute_bitinformation()
 
+    @property
+    def precision(self):
+        return self._precision
+
+    @precision.setter
+    def precision(self, precision):
+        self._precision = precision
+
     def bitinformation(self):
         if self._parameter_changed:
             self.__compute_bitinformation()
             self._parameter_changed = False
         return self._bitinformation
 
-    def cleaned_data(self):
-        inf = self.bitinformation()
-        data = self.data
-        OT = data.dtype.type
-        uintxx = 'uint' + str(data.itemsize*8)
-        data_uint = np.frombuffer(data, uintxx)
-        mask = self.mask
-        if self._verbose > 0:
-            print('Used bit mask: ', bin(mask))
-        a = data_uint & mask
-        return np.frombuffer(a, OT)
-
     @property
     def mask(self):
         ''' create a mask for removing the least significant zeros,
           e.g., 1111.1111.1000.0000 '''
-        inf = self.bitinformation()
-        nbits = inf.size
+        nbits = self._data.itemsize * 8
+        nbits_used = self.nbits_used
         uintxx = 'uint' + str(nbits)
         T = np.dtype(uintxx).type
 
         mask = T(0x0)
-        for a in reversed(inf):
-            if a == 0:
-                mask = mask << T(0x1) | T(0x1)
-            else:
-                break
+        for x in range(0, nbits-nbits_used):
+            mask = mask << T(0x1) | T(0x1)
         mask = ~mask
         return mask
 
@@ -189,11 +260,18 @@ class BitInformation:
         nbits = inf.size
         uintxx = 'uint' + str(nbits)
         T = np.dtype(uintxx).type
+        total_inf = np.sum(inf)
+        tab = pd.DataFrame({'inf':np.flip(inf)})
+        tab['cs'] = tab['inf'].cumsum()
+        tab = tab.loc[tab['cs'] > (1 - self._precision) * total_inf]
+        nbits = tab['cs'].size
+        return nbits
 
-        nbits_removed = 0
-        for a in reversed(inf):
-            if a == 0:
-                nbits_removed += 1
-            else:
-                break
-        return nbits - nbits_removed
+    def compare(self, data):
+        if self._verbose > 0:
+            df = pd.DataFrame({'Value1':data, 'Value2':cleaned_data, 'diff':(data - cleaned_data)}).reset_index()
+            df['index'] += 1
+            df = df[df['diff'] != 0.0]
+            if not df.empty:
+                print(df)
+        return np.all(self._data == data)
