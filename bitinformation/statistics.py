@@ -18,7 +18,7 @@ class Stats:
 
     @staticmethod
     def rmse(v1, v2):
-        print(v1.shape, v2.shape)
+        # print(v1.shape, v2.shape)
         assert(v1.size == v2.size)
         tmp = v1-v2
         return np.sqrt(np.sum(tmp*tmp))

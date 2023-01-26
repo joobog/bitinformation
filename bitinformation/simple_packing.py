@@ -5,9 +5,12 @@ import numpy as np
 class ConstantFieldException(Exception):
     pass
 
+class Underflow(Exception):
+    pass
+
 class IeeeTable:
     def __init__(self):
-        self._U = np.uint64
+        self._U = np.uint32
         self._F = np.float64
 
         i = self._U(0)
@@ -158,8 +161,8 @@ class SimplePacking:
                 l = self.__ieee_to_long(y - eps)
         else:
             return l
-        if x < long_to_ieee(l):
-            assert x >= long_to_ieee(l)
+        if x < self.__long_to_ieee(l):
+            assert x >= self.__long_to_ieee(l)
         return l
 
 
@@ -171,14 +174,17 @@ class SimplePacking:
     def __compute_decimal_scale_factor(self, values, bits_per_value):
         min = np.min(values)
         max = np.max(values)
+        if min == max:
+            raise ConstantFieldException()
         unscaled_max = max
         unscaled_min = min
-        f = 2**bits_per_value
+        f = 2**bits_per_value - 1
         minrange = 2**(-self._last) * f
         maxrange = 2**(self._last) * f
         range = max - min
         decimal = 1.0
         decimal_scale_factor = 0.0
+        # print(f'Range {range} minrange {minrange}')
         while range < minrange:
             decimal_scale_factor += 1
             decimal *= 10
@@ -191,7 +197,9 @@ class SimplePacking:
             min = unscaled_min * decimal
             max = unscaled_max * decimal
             range = (max - min)
-        return decimal_scale_factor
+
+        # print(f'min {min} max {max}')
+        return decimal_scale_factor, min, max
 
 
     def __compute_binary_scale_factor(self, max, min, bits_per_value):
@@ -202,32 +210,39 @@ class SimplePacking:
         maxint = self._U(dmaxint)
         if bits_per_value < 1:
             raise Exception("Bits per value < 1")
-        if range == 0:
-            raise ConstantFieldException()
         zs    = 1
         scale = 0
+        # print(f'range {range} zs {zs} dmaxint {dmaxint}')
+        # print(f'max - min = range {max} {min} {range}')
         while (range * zs) <= dmaxint:
             scale -= 1
             zs *= 2
+        # print(scale)
         while (range * zs) > dmaxint:
             scale += 1;
             zs /= 2;
+        # print(scale)
         while self._U(range * zs + 0.5) <= maxint:
             scale -= 1
             zs *= 2
+        # print(scale)
         while self._U(range * zs + 0.5) > maxint:
             scale += 1
             zs /= 2
+        # print(scale)
 
         if scale < -self._last:
-            raise Exception("Underflow")
+            # print(scale, -self._last)
+            # print(f'max {max}, min {min}, bits_per_value {bits_per_value}')
+            raise Underflow
         assert scale <= self._last
         return scale
 
 
     def encode(self, values, bits_per_value):
-        E = self.__compute_binary_scale_factor(np.max(values), np.min(values), bits_per_value)
-        D = self.__compute_decimal_scale_factor(values, bits_per_value)
+        D, scaled_min, scaled_max = self.__compute_decimal_scale_factor(values, bits_per_value)
+        nearest = self.__nearest_smaller_ieee_float(scaled_min)
+        E = self.__compute_binary_scale_factor(scaled_max, nearest, bits_per_value)
         min_value = np.min(values)
         R = self.__nearest_smaller_ieee_float(min_value)
         R = R*10**D
@@ -235,6 +250,8 @@ class SimplePacking:
         data = ((values * 10**D - R) / 2**E + 0.5).astype(np.uint64)
         return data
 
+    def decode(self, values):
+        raise NotImplementedError
 
 if '__main__' == __name__:
     bits_per_value = 16

@@ -1,6 +1,9 @@
 from simple_packing import *
 
 class Preprocessor:
+    def __init__(self):
+        self._nbits = 0
+
     def get_numpy_type(nbits):
         if nbits <= 8:
             return np.uint8;
@@ -12,11 +15,14 @@ class Preprocessor:
             return np.uint64;
 
     def convert(self, value):
-        pass
+        raise NotImplementedError
 
     @property
     def name(self):
-        pass
+        raise NotImplementedError
+
+    def bits_per_value(self):
+        return self._nbits
 
 class SimplePackingPreprocessor(Preprocessor):
     def __init__(self, nbits, nelems):
@@ -53,9 +59,14 @@ class ScalePreprocessor(Preprocessor):
         return res.astype(T)
 
 class RawPreprocessor(Preprocessor):
+    def __init__(self):
+        self._nbits = -1
+
     @property
     def name(self):
         return 'raw'
 
     def convert(self, data):
+        self._nbits = data.itemsize * 8
         return data
+

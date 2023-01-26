@@ -4,11 +4,11 @@ import unittest
 import numpy as np
 from eccodes import *
 
-from bitinformation.bitinformation import BitInformation
+from bitinformation.analyser import BitInformationAnalyser
 
-class TestBitInformation(unittest.TestCase):
+class TestBitInformationAnalyser(unittest.TestCase):
     def __init__(self, *args, **kwargs):
-        super(TestBitInformation, self).__init__(*args, **kwargs)
+        super(TestBitInformationAnalyser, self).__init__(*args, **kwargs)
 
     def test_compare_with_julia(self):
         with open('data/q_133.grib') as f:
@@ -16,7 +16,7 @@ class TestBitInformation(unittest.TestCase):
             values = codes_get_values(handle)
             codes_release(handle)
 
-            inf = BitInformation(values)
+            inf = BitInformationAnalyser()
 
             output_julia_q_0_4 = np.array(
                 [0.00000000e+00, 0.00000000e+00, 0.00000000e+00, 0.00000000e+00,
@@ -38,8 +38,8 @@ class TestBitInformation(unittest.TestCase):
                 dtype=np.float64)
             inf.szi = True
             inf.confidence = 0.4
-            output_python = inf.bitinformation()
-            np.testing.assert_allclose(output_python, output_julia_q_0_4, atol=1e-06)
+            output_python = inf.analyse(values)
+            np.testing.assert_allclose(output_python.bitinformation, output_julia_q_0_4, atol=1e-06)
 
             output_julia_q_0_99 = np.array(
                 [0.00000000e+00, 0.00000000e+00, 0.00000000e+00, 0.00000000e+00,
@@ -61,8 +61,8 @@ class TestBitInformation(unittest.TestCase):
                 dtype=np.float64)
             inf.szi = True
             inf.confidence = 0.99
-            output_python = inf.bitinformation()
-            np.testing.assert_allclose(output_python, output_julia_q_0_99, atol=1e-06)
+            output_python = inf.analyse(values)
+            np.testing.assert_allclose(output_python.bitinformation, output_julia_q_0_99, atol=1e-06)
 
             output_julia_q_1 = np.array(
                 [0.,0.,0.,0.,0.,0.,0.,0.,0.,0.,0.,0.,0.,0.,0.,0.,0.,0.,0.,0.,0.,0.,0.,0.,
@@ -71,15 +71,15 @@ class TestBitInformation(unittest.TestCase):
                 dtype=np.float64)
             inf.szi = True
             inf.confidence = 1.
-            output_python = inf.bitinformation()
-            np.testing.assert_allclose(output_python, output_julia_q_1, atol=1e-06)
+            output_python = inf.analyse(values)
+            np.testing.assert_allclose(output_python.bitinformation, output_julia_q_1, atol=1e-06)
 
         with open('data/o3_203.grib') as f:
             handle = codes_grib_new_from_file(f)
             values = codes_get_values(handle)
             codes_release(handle)
 
-            inf = BitInformation(values)
+            inf = BitInformationAnalyser()
 
             output_julia_o3_0_4 = np.array(
                 [0.00000000e+00, 0.00000000e+00, 0.00000000e+00, 0.00000000e+00,
@@ -101,8 +101,8 @@ class TestBitInformation(unittest.TestCase):
                 dtype=np.float64)
             inf.szi = True
             inf.confidence = 0.4
-            output_python = inf.bitinformation()
-            np.testing.assert_allclose(output_python, output_julia_o3_0_4, atol=1e-06)
+            output_python = inf.analyse(values)
+            np.testing.assert_allclose(output_python.bitinformation, output_julia_o3_0_4, atol=1e-06)
 
             output_julia_o3_0_99 = np.array(
                 [0.00000000e+00, 0.00000000e+00, 0.00000000e+00, 0.00000000e+00,
@@ -124,8 +124,8 @@ class TestBitInformation(unittest.TestCase):
                 dtype=np.float64)
             inf.szi = True
             inf.confidence = 0.99
-            output_python = inf.bitinformation()
-            np.testing.assert_allclose(output_python, output_julia_o3_0_99, atol=1e-06)
+            output_python = inf.analyse(values)
+            np.testing.assert_allclose(output_python.bitinformation, output_julia_o3_0_99, atol=1e-06)
 
             output_julia_o3_1 = np.array(
                 [0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0.,
@@ -134,15 +134,15 @@ class TestBitInformation(unittest.TestCase):
                 dtype=np.float64)
             inf.szi = True
             inf.confidence = 1.
-            output_python = inf.bitinformation()
-            np.testing.assert_allclose(output_python, output_julia_o3_1, atol=1e-06)
+            output_python = inf.analyse(values)
+            np.testing.assert_allclose(output_python.bitinformation, output_julia_o3_1, atol=1e-06)
 
         with open('data/clwc_246.grib') as f:
             handle = codes_grib_new_from_file(f)
             values = codes_get_values(handle)
             codes_release(handle)
 
-            inf = BitInformation(values)
+            inf = BitInformationAnalyser()
 
             output_julia_clwc_0_4 = np.array(
                 [0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0.,
@@ -151,8 +151,8 @@ class TestBitInformation(unittest.TestCase):
                 dtype=np.float64)
             inf.szi = True
             inf.confidence = 0.4
-            output_python = inf.bitinformation()
-            np.testing.assert_allclose(output_python, output_julia_clwc_0_4, atol=1e-06)
+            output_python = inf.analyse(values)
+            np.testing.assert_allclose(output_python.bitinformation, output_julia_clwc_0_4, atol=1e-06)
 
             output_julia_clwc_0_99 = np.array(
                 [0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0.,
@@ -161,8 +161,8 @@ class TestBitInformation(unittest.TestCase):
                 dtype=np.float64)
             inf.szi = True
             inf.confidence = 0.99
-            output_python = inf.bitinformation()
-            np.testing.assert_allclose(output_python, output_julia_clwc_0_99, atol=1e-06)
+            output_python = inf.analyse(values)
+            np.testing.assert_allclose(output_python.bitinformation, output_julia_clwc_0_99, atol=1e-06)
 
             output_julia_clwc_1 = np.array(
                 [0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0.,
@@ -171,15 +171,15 @@ class TestBitInformation(unittest.TestCase):
                 dtype=np.float64)
             inf.szi = True
             inf.confidence = 1.
-            output_python = inf.bitinformation()
-            np.testing.assert_allclose(output_python, output_julia_clwc_1, atol=1e-06)
+            output_python = inf.analyse(values)
+            np.testing.assert_allclose(output_python.bitinformation, output_julia_clwc_1, atol=1e-06)
 
         with open('data/asn_32.grib') as f:
             handle = codes_grib_new_from_file(f)
             values = codes_get_values(handle)
             codes_release(handle)
 
-            inf = BitInformation(values)
+            inf = BitInformationAnalyser()
 
             output_julia_ans_0_4 = np.array(
                 [0., 0., 0., 0., 0., 0.,
@@ -196,8 +196,8 @@ class TestBitInformation(unittest.TestCase):
                 dtype=np.float64)
             inf.szi = True
             inf.confidence = 0.4
-            output_python = inf.bitinformation()
-            np.testing.assert_allclose(output_python, output_julia_ans_0_4, atol=1e-06)
+            output_python = inf.analyse(values)
+            np.testing.assert_allclose(output_python.bitinformation, output_julia_ans_0_4, atol=1e-06)
 
             output_julia_ans_0_99 = np.array(
                 [0., 0., 0., 0., 0., 0.,
@@ -214,8 +214,8 @@ class TestBitInformation(unittest.TestCase):
                 dtype=np.float64)
             inf.szi = True
             inf.confidence = 0.99
-            output_python = inf.bitinformation()
-            np.testing.assert_allclose(output_python, output_julia_ans_0_99, atol=1e-06)
+            output_python = inf.analyse(values)
+            np.testing.assert_allclose(output_python.bitinformation, output_julia_ans_0_99, atol=1e-06)
 
             output_julia_ans_1 = np.array(
                 [0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0.,
@@ -224,8 +224,8 @@ class TestBitInformation(unittest.TestCase):
                 dtype=np.float64)
             inf.szi = True
             inf.confidence = 1.
-            output_python = inf.bitinformation()
-            np.testing.assert_allclose(output_python, output_julia_ans_1, atol=1e-06)
+            output_python = inf.analyse(values)
+            np.testing.assert_allclose(output_python.bitinformation, output_julia_ans_1, atol=1e-06)
 
 if __name__ == "__main__":
     unittest.main()

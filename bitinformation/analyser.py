@@ -26,64 +26,84 @@ def binom_free_entropy(n, c, base=2):
     return entropy
 
 class Analyser:
-    @property
-    def data(self):
-        pass
+    class Result:
+        def __init__(self,
+                     bitinformation,
+                     nbits_used,
+                     masked_data,
+                     mask,
+                     equal):
+            self._bitinformation = bitinformation
+            self._nbits_used = nbits_used
+            self._masked_data = masked_data
+            self._mask = mask
+            self._equal = equal
 
-    @data.setter
-    def data(self, data):
-        pass
+        @property
+        def bitinformation(self):
+            return self._bitinformation
 
-    @property
-    def mask(self):
-        pass
+        @property
+        def nbits_used(self):
+            return self._nbits_used
 
-    @property
-    def nbits_used(self):
-        pass
+        @property
+        def masked_data(self):
+            return self._masked_data
 
-    def bitinformation(self):
-        pass
+        @property
+        def mask(self):
+            return self._mask
 
-    def cleaned_data(self):
-        # inf = self.bitinformation()
-        data = self.data
+        @property
+        def equal(self):
+            return self._equal
+
+        def print(self):
+            print(f'Bitinformation: \n{self._bitinformation}')
+            print(f'nbits_used: {self._nbits_used}')
+            print(f'mask:       {bin(self._mask)}')
+            print(f'equal:      {self._equal}')
+
+    def analyse(self, data):
+        raise NotImplementedError
+
+    @staticmethod
+    def masked_data(data, mask, verbose=0):
         OT = data.dtype.type
         uintxx = 'uint' + str(data.itemsize*8)
         data_uint = np.frombuffer(data, uintxx)
-        mask = self.mask
-        if self._verbose > 0:
+        if verbose > 0:
             print('Used bit mask: ', bin(mask))
         a = data_uint & mask
         return np.frombuffer(a, OT)
 
-    def compare(self):
-        pass
+    @staticmethod
+    def compare(data, masked_data, verbose=0):
+        if verbose > 0:
+            df = pd.DataFrame({'Value1':data, 'Value2':masked_data, 'diff':(data - masked_data)}).reset_index()
+            df['index'] += 1
+            df = df[df['diff'] != 0.0]
+            if not df.empty:
+                print(df)
+        return np.all(data == masked_data)
 
 
-class ManualAnalyser(Analyser):
-    def __init__(self, data, mask):
-        self._data = data
+
+class MaskAnalyser(Analyser):
+    def __init__(self, mask, verbose=0):
         self._mask = mask
-        self._verbose = 0
-
-    @property
-    def data(self):
-        return self._data
-
-    @data.setter
-    def data(self, data):
-        self._data = data
+        self._verbose = verbose
 
     @property
     def mask(self):
         return self._mask
 
-    @property
-    def nbits_used(self):
-        return np.sum(self.bitinformation()).astype(np.int64)
+    @mask.setter
+    def mask(self, mask):
+        self._mask = mask
 
-    def bitinformation(self):
+    def __bitinformation(self):
         U = self._data.dtype.type
         mask = self._mask
         nbits = self._data.itemsize * 8
@@ -93,24 +113,53 @@ class ManualAnalyser(Analyser):
             mask = mask >> U(0x1)
         return bi
 
-    def compare(self, data):
-        if self._verbose > 0:
-            df = pd.DataFrame({'Value1':data, 'Value2':cleaned_data, 'diff':(data - cleaned_data)}).reset_index()
-            df['index'] += 1
-            df = df[df['diff'] != 0.0]
-            if not df.empty:
-                print(df)
-        return np.all(self._data == data)
-
+    def analyse(self, data):
+        bitinformation = self.__bitinformation()
+        nbits_used = np.sum(self.bitinformation()).astype(np.int64)
+        masked_data = Analyser.masked_data(data, self._mask)
+        mask = self._mask
+        equal = Analyser.compare(data, masked_data)
+        return Result(bitinformation, nbits_used, masked_data, mask, equal)
 
 
 class BitInformationAnalyser(Analyser):
-    def __init__(self, data, verbose=0, szi=True, confidence=0.99, precision=0.99):
-        self._data = data
+    def __init__(self, szi=True, confidence=0.99, precision=0.99, verbosity=0):
+        self.szi=szi
+        self.confidence=confidence
+        self.precision = precision
+        self._verbose = verbosity
+
+    @property
+    def confidence(self):
+        return self._confidence
+
+    @confidence.setter
+    def confidence(self, confidence):
+        assert(confidence >=0 and confidence <= 1)
+        self._confidence = confidence
+
+    @property
+    def szi(self):
+        return self._szi
+
+    @szi.setter
+    def szi(self, szi):
+        self._szi = szi
+
+    @property
+    def verbose(self):
+        return self._verbose
+
+    @verbose.setter
+    def verbose(self, verbose):
         self._verbose = verbose
-        self._szi=szi
-        self._confidence=confidence
-        self._parameter_changed = True
+
+    @property
+    def precision(self):
+        return self._precision
+
+    @precision.setter
+    def precision(self, precision):
         self._precision = precision
 
 
@@ -177,72 +226,19 @@ class BitInformationAnalyser(Analyser):
             self.__szi(M, nelements, confidence)
         return M
 
+    def __bitinformation(self, data):
+        if type(data) is not np.ndarray:
+            raise Exception(f'Expect numpy.ndarray as parameter but got {type(data)}')
 
-    def __compute_bitinformation(self):
-        if type(self._data) is not np.ndarray:
-            raise Exception(f'Expect numpy.ndarray as parameter but got {type(self._data)}')
+        uintxx = 'uint' + str(data.itemsize*8)
+        A_uint = np.frombuffer(data, uintxx)
+        bitinformation = self.__mutual_information(A_uint, szi=self._szi, confidence=self._confidence)
+        return bitinformation
 
-        uintxx = 'uint' + str(self._data.itemsize*8)
-        A_uint = np.frombuffer(self.data, uintxx)
-        self._bitinformation = self.__mutual_information(A_uint, szi=self._szi, confidence=self._confidence)
-
-    @property
-    def confidence(self):
-        return self._confidence
-
-    @confidence.setter
-    def confidence(self, confidence):
-        if self._confidence != confidence:
-            self._confidence = confidence
-            self._parameter_changed = True
-
-    @property
-    def szi(self):
-        return self._szi
-
-    @szi.setter
-    def szi(self, szi):
-        if self._szi != szi:
-            self._szi = szi
-            self._parameter_changed = True
-
-    @property
-    def verbose(self):
-        return self._verbose
-
-    @verbose.setter
-    def verbose(self, verbose):
-        self._verbose = verbose
-
-    @property
-    def data(self):
-        return self._data
-
-    @data.setter
-    def data(self, data):
-        self._data = data
-        self.__compute_bitinformation()
-
-    @property
-    def precision(self):
-        return self._precision
-
-    @precision.setter
-    def precision(self, precision):
-        self._precision = precision
-
-    def bitinformation(self):
-        if self._parameter_changed:
-            self.__compute_bitinformation()
-            self._parameter_changed = False
-        return self._bitinformation
-
-    @property
-    def mask(self):
+    def __mask(self, data, nbits_used):
         ''' create a mask for removing the least significant zeros,
           e.g., 1111.1111.1000.0000 '''
-        nbits = self._data.itemsize * 8
-        nbits_used = self.nbits_used
+        nbits = data.itemsize * 8
         uintxx = 'uint' + str(nbits)
         T = np.dtype(uintxx).type
 
@@ -252,11 +248,7 @@ class BitInformationAnalyser(Analyser):
         mask = ~mask
         return mask
 
-    @property
-    def nbits_used(self):
-        ''' create a mask for removing the least significant zeros,
-          e.g., 1111.1111.1000.0000 '''
-        inf = self.bitinformation()
+    def __nbits_used(self, inf):
         nbits = inf.size
         uintxx = 'uint' + str(nbits)
         T = np.dtype(uintxx).type
@@ -264,14 +256,18 @@ class BitInformationAnalyser(Analyser):
         tab = pd.DataFrame({'inf':np.flip(inf)})
         tab['cs'] = tab['inf'].cumsum()
         tab = tab.loc[tab['cs'] > (1 - self._precision) * total_inf]
-        nbits = tab['cs'].size
-        return nbits
+        nbits_used = tab['cs'].size
 
-    def compare(self, data):
-        if self._verbose > 0:
-            df = pd.DataFrame({'Value1':data, 'Value2':cleaned_data, 'diff':(data - cleaned_data)}).reset_index()
-            df['index'] += 1
-            df = df[df['diff'] != 0.0]
-            if not df.empty:
-                print(df)
-        return np.all(self._data == data)
+        # The data type can contain more bits than the analysed numbers
+        # e.g. uint32 can contain a number with 24 bits per value
+        # nbits_used = nbits_used - (nbits - self._nbits_avail)
+        return nbits_used
+
+
+    def analyse(self, data):
+        bitinformation = self.__bitinformation(data)
+        nbits_used = self.__nbits_used(bitinformation)
+        mask = self.__mask(data, nbits_used)
+        masked_data = Analyser.masked_data(data=data, mask=mask)
+        equal = Analyser.compare(data, masked_data)
+        return self.Result(bitinformation, nbits_used, masked_data, mask, equal)
