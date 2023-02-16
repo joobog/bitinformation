@@ -34,15 +34,13 @@ class IeeeTable:
             self._e[150 - i] = e
             self._v[150 - i] = e * mmin
 
-        self._vmin   = self._v[1]
-        self._vmax   = self._e[254] * mmax
+        self._vmin = self._v[1]
+        self._vmax = self._e[254] * mmax
 
     def search(self, x):
-        U = np.uint64
-        F = np.float64
         jl = self._U(0)
         ju = self._U(self._v.size)
-        while (ju - jl > 1):
+        while ju - jl > 1:
             jm = (ju + jl) >> self._U(1)
             if x >= self.v[jm]:
                 jl = jm
@@ -67,7 +65,6 @@ class IeeeTable:
         return self._e
 
 
-
 class SimplePacking:
     def __init__(self):
         self._ieee_table = IeeeTable()
@@ -83,7 +80,7 @@ class SimplePacking:
         if (c == 0) and (m == 0):
             return 0
 
-        if (c == 0):
+        if c == 0:
             m |= self._U(0x800000)
             c = 1
         else:
@@ -97,18 +94,18 @@ class SimplePacking:
 
 
     def __ieee_to_long(self, x):
-        s    = self._U(0)
+        s = self._U(0)
         mmax = self._U(0xffffff)
         mmin = self._U(0x800000)
-        m    = self._U(0)
-        e    = self._U(0)
+        m = self._U(0)
+        e = self._U(0)
         rmmax = self._F(mmax + 0.5)
 
         if x < 0:
             s = self._U(1)
             x = -x
         if x < self._ieee_table.vmin:
-            return (s << self._U(31))
+            return s << self._U(31)
 
         if x > self._ieee_table.vmax:
             raise Exception(f'Number is too large: x {x} > xmax {self._ieee_table.vmax}')
@@ -143,7 +140,7 @@ class SimplePacking:
             return self._U(0)
         l = self.__ieee_to_long(x)
         y = self.__long_to_ieee(l)
-        if (x < y):
+        if x < y:
             if (x < 0) and (-x < self._ieee_table.vmin):
                 l = self._U(0x80800000)
             else:
@@ -172,68 +169,68 @@ class SimplePacking:
 
 
     def __compute_decimal_scale_factor(self, values, bits_per_value):
-        min = np.min(values)
-        max = np.max(values)
-        if min == max:
+        vmin = np.min(values)
+        vmax = np.max(values)
+        if vmin == vmax:
             raise ConstantFieldException()
-        unscaled_max = max
-        unscaled_min = min
+        unscaled_max = vmax
+        unscaled_min = vmin
         f = 2**bits_per_value - 1
         minrange = 2**(-self._last) * f
         maxrange = 2**(self._last) * f
-        range = max - min
+        vrange = vmax - vmin
         decimal = 1.0
-        decimal_scale_factor = 0.0
-        # print(f'Range {range} minrange {minrange}')
-        while range < minrange:
+        decimal_scale_factor = 0
+        # print(f'Range {vrange} minrange {minrange}')
+        while vrange < minrange:
             decimal_scale_factor += 1
             decimal *= 10
-            min = unscaled_min * decimal
-            max = unscaled_max * decimal
-            range = (max - min)
-        while range > maxrange:
+            vmin = unscaled_min * decimal
+            vmax = unscaled_max * decimal
+            vrange = (vmax - vmin)
+        while vrange > maxrange:
             decimal_scale_factor -= 1
             decimal /= 10.0
-            min = unscaled_min * decimal
-            max = unscaled_max * decimal
-            range = (max - min)
+            vmin = unscaled_min * decimal
+            vmax = unscaled_max * decimal
+            vrange = (vmax - vmin)
 
-        # print(f'min {min} max {max}')
-        return decimal_scale_factor, min, max
+        # print(f'vmin {vmin} vmax {vmax}')
+        return decimal_scale_factor, vmin, vmax
 
 
-    def __compute_binary_scale_factor(self, max, min, bits_per_value):
-        range = max - min;
+    def __compute_binary_scale_factor(self, vmax, vmin, bits_per_value):
+        vrange = vmax - vmin
         dmaxint = self._F(2**bits_per_value - 1)
         if dmaxint >= np.iinfo(self._U).max:
-            raise Exception("Out of range")
+            raise Exception("Out of vrange")
         maxint = self._U(dmaxint)
         if bits_per_value < 1:
             raise Exception("Bits per value < 1")
-        zs    = 1
+        zs = 1
         scale = 0
-        # print(f'range {range} zs {zs} dmaxint {dmaxint}')
-        # print(f'max - min = range {max} {min} {range}')
-        while (range * zs) <= dmaxint:
+        # print(f'vrange {vrange} zs {zs} dmaxint {dmaxint}')
+        # print(f'vmax - vmin = vrange {vmax} {vmin} {vrange}')
+        while (vrange * zs) <= dmaxint:
             scale -= 1
             zs *= 2
         # print(scale)
-        while (range * zs) > dmaxint:
-            scale += 1;
-            zs /= 2;
+        while (vrange * zs) > dmaxint:
+            scale += 1
+            zs /= 2
         # print(scale)
-        while self._U(range * zs + 0.5) <= maxint:
+        while self._U(vrange * zs + 0.5) <= maxint:
             scale -= 1
             zs *= 2
         # print(scale)
-        while self._U(range * zs + 0.5) > maxint:
+        while self._U(vrange * zs + 0.5) > maxint:
             scale += 1
             zs /= 2
         # print(scale)
 
         if scale < -self._last:
             # print(scale, -self._last)
-            # print(f'max {max}, min {min}, bits_per_value {bits_per_value}')
+            # print(f'vmax {vmax}, vmin {vmin}, bits_per_value {bits_per_value}')
             raise Underflow
         assert scale <= self._last
         return scale
@@ -248,14 +245,7 @@ class SimplePacking:
         R = R*10**D
         # print(f'R {R}, D {D}, E {E}')
         data = ((values * 10**D - R) / 2**E + 0.5).astype(np.uint64)
-        return data
+        return (R, E, D, data)
 
-    def decode(self, values):
-        raise NotImplementedError
-
-if '__main__' == __name__:
-    bits_per_value = 16
-    values = np.array([0.12, 0.23, 0.42, 0.54, 0.12, 0.30, 0.12], dtype = np.float64 )
-    sp = SimplePacking()
-    data = sp.encode(values, bits_per_value)
-    print(data)
+    def decode(self, R, E, D, values):
+        return (values.astype(np.float64) * 2**E + R) / 10**D

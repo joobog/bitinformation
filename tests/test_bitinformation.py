@@ -3,7 +3,7 @@
 import unittest
 import numpy as np
 
-from bitinformation.bitinformation import *
+from bitinformation.analyser import *
 
 class TestBitInformation(unittest.TestCase):
     def __init__(self, *args, **kwargs):
@@ -15,22 +15,22 @@ class TestBitInformation(unittest.TestCase):
             buffer=np.array([12, 14, 17, 19, 20, 18, 15, 12, 11, 10], dtype=np.float64),
             dtype=np.float64
         )
-        binfo = BitInformation(A)
-        b = binfo.bitinformation()
+        binfo = BitInformationAnalyser()
+        b = binfo.analyse(A)
         a = np.array([
-            0,0,0,0,0,0,
-            0,0,0,0,0,0,
-            0,0,0,0,0,0,
-            0,0,0,0,0,0,
-            0,0,0,0,0,0,
-            0,0,0,0,0,0,
-            0,0,0,0,0,0,
-            0,0,0,0,0,0,
-            0,0,0,0,0,0,
-            0,0,0,0,0,0,
-            0,0,0,0
+            0, 0, 0, 0, 0, 0,
+            0, 0, 0, 0, 0, 0,
+            0, 0, 0, 0, 0, 0,
+            0, 0, 0, 0, 0, 0,
+            0, 0, 0, 0, 0, 0,
+            0, 0, 0, 0, 0, 0,
+            0, 0, 0, 0, 0, 0,
+            0, 0, 0, 0, 0, 0,
+            0, 0, 0, 0, 0, 0,
+            0, 0, 0, 0, 0, 0,
+            0, 0, 0, 0
         ])
-        self.assertTrue(np.array_equal(a, b))
+        self.assertTrue(np.array_equal(a, b['bitinformation']))
 
     # def test_permute_dim_forward(self):
     #     a = np.zeros((3, 4, 5, 6, 7))

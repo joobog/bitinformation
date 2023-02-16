@@ -11,8 +11,9 @@ class TestTable(unittest.TestCase):
 
     def test_abstract_class(self):
         tab = Table()
-        with self.assertRaises(NotImplementedError):
-            tab.add(None, None)
+        tab.add({'a':'x', 'b': 'y'})
+        expected = [{'a':'x', 'b': 'y'}]
+        self.assertTrue(tab._tab == expected)
 
     def test_long_format(self):
         entry = {'a':'x', 'b': 'y'}

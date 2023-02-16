@@ -5,12 +5,12 @@ class Table:
     def __init__(self):
         self._tab = list()
 
-    def add(self, entry, bitinformation):
-        raise NotImplementedError
+    def add(self, entry):
+        tab_entry = entry.copy()
+        self._tab.append(tab_entry)
 
     def save(self, fn):
         df = pd.DataFrame(self._tab)
-        # res = pd.concat([output, df], axis=0)
         df.to_csv(fn, index=False)
 
     def print(self):
