@@ -1,0 +1,20 @@
+grib1: GRIB file 1
+grib2: GRIB file 2
+
+prep1_encode: Encode doubles
+prep2_encode: Encode doubles
+
+mask1 : Mask non-significant bits
+mask2 : Mask non-significant bits
+
+compare: Compare
+
+#usr_mask: User-defined mask
+#file_mask: Mask from file
+#analyser_mask: Mask form analyser
+
+prep1_decode: Decode doubles
+prep2_decode: Decode doubles
+
+grib1 -> prep1_encode -> mask1 -> prep1_decode -> compare
+grib2 -> prep2_encode -> mask2 -> prep2_decode -> compare
