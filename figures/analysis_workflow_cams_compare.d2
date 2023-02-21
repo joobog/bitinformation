@@ -1,0 +1,20 @@
+grib: Data
+
+prep1: Data Processor {
+  encode: Encode\nSimple Packing\n24-bits
+  decode: Decode\nSimple Packing
+  encode -> decode
+}
+
+prep2: Data Processor {
+  encode: Encode\nSimple Packing\noptimal
+  decode: Decode\nSimple Packing
+  encode -> decode
+}
+
+compare: Compare
+
+grib -> prep1: Values
+grib -> prep2: Values
+prep1 -> compare: Decoded values
+prep2 -> compare: Decoded values

@@ -1,20 +1,13 @@
 values: Values
 
 prep: Preprocessor {
-  ident: Identity
   simple: Simple Packing
-  scale: Scaling
-  custom: ...
 }
 
 analyser: Analyser {
   bitinfo: BitInformation
-  custom: ...
 }
 
-mask: Mask
 nbits: bits-per-value
 
-values -> prep -> analyser
-analyser -> mask
-analyser -> nbits
+values -> prep -> analyser -> nbits

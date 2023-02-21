@@ -1,8 +1,55 @@
 [![publish](https://github.com/joobog/bitinformation/actions/workflows/publish.yaml/badge.svg)](https://github.com/joobog/bitinformation/actions/workflows/publish.yaml)
 [![test](https://github.com/joobog/bitinformation/actions/workflows/ci.yaml/badge.svg)](https://github.com/joobog/bitinformation/actions/workflows/ci.yaml)
 
+
+
 # Bit-Information-Content Tool
 
+Bitshaper is a powerful tool for comparing data without regard to the bits that do not carry significant information. 
+It also offers the possibility to explore the data for information content.
+
+## Quick start
+This section shows some examples of the most common applications.
+
+## Install
+
+    python3 -m pip install bitinformation
+
+### Compare GRIB files
+The comparison is made with a mask. This mask is calculated by the analyser, it can be read from the file or passed with the mask parameter.
+
+![Alt text](./figures/comparison_workflow_identity.d2.png?raw=true "Title")
+
+The usual case is that you will probably just want to compare two files. 
+But this assumes that you already have a configuration.
+
+    bitshaper.py --compare file1.grib file2.grib --preprocessor raw
+
+If you don't have a configuration file yet, you can create one by running the tool with --use-analyser --add-missing-parameters arguments.
+
+    bitshaper.py --compare file1.grib file2.grib --preprocessor raw --use-analyser --add-missing-parameters
+
+### Compute bitsPerValue in Simple Packing
+test
+
+![Alt text](./figures/analysis_workflow.d2.png?raw=true "Analysis workflow")
+
+    bitshaper.py --compare file1.grib file2.grib
+
+### Explore data
+If you want to analyse the levels of each parameter, you must first define the primary key. 
+This is a set of keys from different sources, e.g. Mars keys, Analyser and Preprocessor parameters.
+Then, in --value-key you define which values you want to record.
+The data then is exported to a CSV file.
+
+    params+="--primary-key short_name stream analyser_precision levelist preprocessor_bits_per_value "
+    params+="--value-key mask nbits_used"
+    params+="--csv $out_dir/explore.csv "
+    $tool $params --stats file1.grib file2.grib file3.grib
+
+
+
+## Algorithm behind the scene
 The method calculates how much information content each bit in a number has.
 In essence, it is a statistical analysis of bit sequences.
 For example, according to this approach, random sequences of binary values and or a sequences of ones or zeros contain no information.
@@ -13,7 +60,7 @@ Once a sequence has a structure, the information content is non-zero.
     [0000000000000000] # zero information content
     [0000111100001111] # high information content
 
-## Algorithm
+
 The following example explains the algorithm step by step without using formulas, when possible.
 
 In the first step, assume there is a sequence `S` of 4-bit numbers. 
@@ -133,36 +180,3 @@ It says how much information a bit contains.
 | 2 | 0.429 | 0.143 | 0.000 | 0.429 | 0.235 | 
 | 3 | 1.000 | 0.000 | 0.000 | 0.000 | 0.000 | 
 													
-
-
-## Install
-
-    python3 -m pip install bitinformation
-
-## Usage
-
-### Compute bit information
-
-    import numpy as np
-    import bitinformation.bitinformation as bit
-    data = np.random.rand(10000)  
-    bi = bit.BitInformation()
-    bi.bitinformation(data)
-
-### Compare data
-
-    import numpy as np
-    import bitinformation.bitinformation as bit
-    data1 = np.random.rand(10000)  
-    data2 = np.random.rand(10000)  
-    res = bit.compare_data(data1, data2)
-
-### Compare GRIB files
-
-    import numpy as np
-    import bitinformation.bitinformation as bit
-    fn1 = "grib.grib"
-    res = bit.compare_data(data1, data2)
-
-This tool is based on work by Klöwer et. al:
-<https://github.com/milankl/BitInformation.jl>
